@@ -56,6 +56,7 @@ def send_telegram_message(name, phone, item, date):
     """
     # ВАЖНО: Вставь сюда свои данные!
     bot_token = '8568777588:AAFKl0C2y-lux54xLInATa9Jb-dx4K_1v6s'
+    chat_id = '-5178040794'
 
     # Формируем красивое сообщение с эмодзи и HTML-тегами для жирного шрифта
     text = (
@@ -71,6 +72,7 @@ def send_telegram_message(name, phone, item, date):
 
     # Данные, которые мы отправляем
     data = {
+        'chat_id': chat_id,
         'text': text,
         'parse_mode': 'HTML' # Позволяет использовать <b> и <i> в тексте
     }
@@ -88,27 +90,41 @@ def book_appointment(request):
     if request.method == 'POST':
         name = request.POST.get('customer_name')
 
-        # Собираем и очищаем номер телефона
+        # Умная очистка телефона: если клиент ввел +998, не добавляем его еще раз
         raw_phone = request.POST.get('phone_number', '')
-        clean_phone = '+998' + ''.join(filter(str.isdigit, raw_phone))
+        digits = ''.join(filter(str.isdigit, raw_phone))
+        if digits.startswith('998'):
+            clean_phone = '+' + digits
+        else:
+            clean_phone = '+998' + digits
 
         item = request.POST.get('selected_item')
-        date = request.POST.get('desired_date')
 
-        # 1. Сохраняем лид в базу данных (в админку)
+        # ПОЧИНКА ОШИБКИ: Берем новые поля из HTML
+        booking_date = request.POST.get('booking_date') # Например: 2026-03-19
+        booking_time = request.POST.get('booking_time') # Например: 09:00
+
+        # Склеиваем их для базы данных
+        full_date = f"{booking_date} {booking_time}"
+
+        # Сохраняем в БД
         Appointment.objects.create(
             customer_name=name,
             phone_number=clean_phone,
             selected_item=item,
-            desired_date=date
+            desired_date=full_date  # Теперь здесь будет "2026-03-19 09:00"
         )
 
-        # 2. ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ В ТЕЛЕГРАМ
-        send_telegram_message(name, clean_phone, item, date)
+        # Отправка в Telegram
+        send_telegram_message(name, clean_phone, item, full_date)
 
-        # Показываем сообщение об успехе
-        messages.success(request, 'Отлично! Ваша заявка принята. Мы перезвоним для подтверждения.')
-
+        messages.success(request, 'Заявка принята! Мы скоро свяжемся с вами.')
         return redirect('index')
 
     return render(request, 'contact.html')
+
+def change_language(request, lang_code):
+    # Сохраняем выбранный код языка в сессию пользователя
+    request.session['lang'] = lang_code
+    # Возвращаем пользователя на ту же страницу, где он был
+    return redirect(request.META.get('HTTP_REFERER', 'index'))

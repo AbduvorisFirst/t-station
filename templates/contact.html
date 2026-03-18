@@ -1,6 +1,20 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+    <a class="nav-link" href="#">{{ t.nav_home }}</a>
+
+    <div class="dropdown">
+        <button class="btn btn-outline-light dropdown-toggle" data-bs-toggle="dropdown">
+            {{ current_lang|upper }}
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item fw-bold py-2" href="{% url 'change_lang' 'ru' %}">🇷🇺 Русский</a></li>
+            <li><a class="dropdown-item fw-bold py-2" href="{% url 'change_lang' 'uz' %}">🇺🇿 O'zbekcha</a></li>
+            <li><a class="dropdown-item fw-bold py-2" href="{% url 'change_lang' 'en' %}">🇬🇧 English</a></li>
+        </ul>
+    </div>
+
+    <h1>{{ t.hero_title }}</h1>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Быстрая запись | AutoPro</title>
@@ -104,7 +118,7 @@
     <h2 class="fw-bold mb-1">Запись на сервис</h2>
     <p class="text-muted mb-4">Выберите услугу и оставьте контакты, мы ждем вас!</p>
 
-    <form action="{% url 'book_appointment' %}" method="POST">
+    <form action="{% url 'contact' %}" method="POST">
         {% csrf_token %}
 
         <div class="mb-4">
@@ -147,10 +161,50 @@
             </div>
         </div>
 
-        <div class="mb-4">
-            <label class="form-label fw-bold">Желаемая дата</label>
-            <input type="datetime-local" name="desired_date" class="form-control" required>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Выберите дату</label>
+            <input type="date" name="booking_date" id="datePicker" class="form-control" required>
         </div>
+
+        <div class="mb-4">
+            <label class="form-label fw-bold">Доступное время</label>
+            <div id="timeSlots" class="d-flex flex-wrap gap-2">
+            </div>
+            <input type="hidden" name="booking_time" id="selectedTime" required>
+        </div>
+
+        <script>
+            // 1. Устанавливаем минимальную дату — сегодня
+            const datePicker = document.getElementById('datePicker');
+            const today = new Date().toISOString().split('T')[0];
+            datePicker.setAttribute('min', today);
+
+            // 2. Генерируем временные слоты (с 9:00 до 18:00)
+            const timeSlotsContainer = document.getElementById('timeSlots');
+            const selectedTimeInput = document.getElementById('selectedTime');
+            const times = ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
+
+            times.forEach(time => {
+                const btn = document.createElement('div');
+                btn.innerText = time;
+                btn.className = 'btn btn-outline-secondary flex-grow-1 py-2 px-3';
+                btn.style.borderRadius = '12px';
+                btn.style.cursor = 'pointer';
+
+                btn.onclick = function() {
+                    // Сбрасываем стиль у всех кнопок
+                    document.querySelectorAll('#timeSlots div').forEach(b => {
+                        b.classList.replace('btn-dark', 'btn-outline-secondary');
+                        b.style.color = '';
+                    });
+                    // Активируем выбранную
+                    btn.classList.replace('btn-outline-secondary', 'btn-dark');
+                    btn.style.color = 'white';
+                    selectedTimeInput.value = time;
+                };
+                timeSlotsContainer.appendChild(btn);
+            });
+        </script>
 
         <button type="submit" class="btn btn-submit w-100 fs-5">
             Подтвердить запись <i class="bi bi-check2-circle ms-2"></i>
